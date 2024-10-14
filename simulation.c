@@ -59,27 +59,14 @@ int *readFile(const char *filename, int *count) {
 		return NULL;
 	}
 
-	// size_t buffer = 128;
-	// char *processIDLine = (char *)malloc(buffer * sizeof(char));
-
-	// if (!processIDLine) {
-    //     fprintf(stderr, "Memory allocation failed\n");
-    //     fclose(inputFile);
-    //     return NULL;
-    // }
-
-	// if (fgets(processIDLine, buffer, inputFile) == NULL) {
-    //     fprintf(stderr, "Error reading from file or file is empty: %s\n", processIDLine);
-    //     free(processIDLine);
-    //     fclose(inputFile);
-    //     return NULL;
-    // }
-
+	// Count how many numbers there are
     int temp, total = 0;
+    // Reads integer %d
     while (fscanf(inputFile, "%d", &temp) == 1) {
     	total++;
     }
 
+    // Allocate memory for array
     int *numbers = (int *)malloc(total * sizeof(int));
     if (numbers == NULL) {
         printf("Memory allocation failed.\n");
@@ -87,42 +74,15 @@ int *readFile(const char *filename, int *count) {
         return NULL;
     }
 
-    rewind(inputFile);
-    *count = 0;
+    // Put numbers into array
+    rewind(inputFile);		// Reset file pointer to the start after counting
+    *count = 0;				// Set count to 0
+    // Reads next integer and puts it in numbers array via count
     while (fscanf(inputFile, "%d", &numbers[*count]) == 1) {
-    	(*count)++;
+    	(*count)++;			// Increment to go to next element in array
     }
 
 	fclose(inputFile);
-
-	// int count = 0;
-    // char *tempToken = strtok(processIDLine, " ");
-    // while (tempToken) {
-    //     count++;
-    //     tempToken = strtok(NULL, " ");
-    // }
-
-    // int *array = (int *)malloc(count * sizeof(int));
-    // if (!array) {
-    // 	fprintf(stderr, "Memory allocation failed\n");
-    //     free(processIDLine);
-    //     return NULL;
-    // }
-
-
-	// // Reset the strtok process to split again
-    // strtok(processIDLine, " "); // Reset strtok to the start of the string
-    // char *token = strtok(processIDLine, " ");
-    // int i = 0;
-    // while (token) {
-    //     array[i] = atoi(token);
-    //     token = strtok(NULL, " ");
-    //     i++;
-    // }
-
-    // free(processIDLine);
-
-    // *size = count;
 
 	return numbers;
 }
@@ -149,24 +109,14 @@ int main(int argc, const char *argv[]) {
 		}
 	}
 
-	int count;
-	int *numbers = readFile(argv[1], &count);
+	// Read file and obtain array with processID's
+	int count;		// For the number of processID's
+	int *processIDArray = readFile(argv[1], &count);
 
-	if (numbers != NULL) {
-        // Print the numbers
-        printf("Numbers in the file:\n");
-        for (int i = 0; i < count; i++) {
-            printf("%d ", numbers[i]);
-        }
-        printf("\n");
 
-        // Free the allocated memory
-        free(numbers);
-    }
 
-    //printf("%s", argv[1]);
-
-	//writeOutput(argv[2], processIDLine);
+    // Free the allocated memory
+    free(processIDArray)
 
 	return 0;
 }
