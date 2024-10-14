@@ -1,6 +1,7 @@
 #include 	<stdio.h>
 #include	<stdlib.h>
 #include	<ctype.h>
+#include	<string.h>
 
 #define	RAM_CAPACITY	16
 #define VM_CAPACITY		32
@@ -50,7 +51,7 @@ void writeOutput(const char *filename, const char *processes) {
 	fclose(outputFile);
 }
 
-char *readFile(const char *filename) {
+int *readFile(const char *filename, int *count) {
 
 	FILE *inputFile = fopen(filename, "r");
 	if (!inputFile) {
@@ -58,14 +59,14 @@ char *readFile(const char *filename) {
 		return NULL;
 	}
 
-	size_t bufferSize = 64;
-	char *processIDLine = (char *)malloc(bufferSize * sizeof(char));
+	// size_t buffer = 128;
+	// char *processIDLine = (char *)malloc(buffer * sizeof(char));
 
-	if (!processIDLine) {
-        fprintf(stderr, "Memory allocation failed\n");
-        fclose(inputFile);
-        return NULL;
-    }
+	// if (!processIDLine) {
+    //     fprintf(stderr, "Memory allocation failed\n");
+    //     fclose(inputFile);
+    //     return NULL;
+    // }
 
 	// if (fgets(processIDLine, buffer, inputFile) == NULL) {
     //     fprintf(stderr, "Error reading from file or file is empty: %s\n", processIDLine);
@@ -74,62 +75,98 @@ char *readFile(const char *filename) {
     //     return NULL;
     // }
 
-    size_t currentLength = 0;
-    int character;
-
-    // Read the file character by character to dynamically resize buffer as needed
-    while ((character = fgetc(inputFile)) != EOF) {
-        // If the buffer is full, expand it
-        if (currentLength + 1 >= bufferSize) {
-            bufferSize *= 2; // Double the buffer size
-            char *temp = realloc(processIDLine, bufferSize * sizeof(char));
-            if (!temp) {
-                fprintf(stderr, "Memory reallocation failed\n");
-                free(processIDLine);
-                fclose(inputFile);
-                return NULL;
-            }
-            processIDLine = temp;
-        }
-        // Add the character to the string
-        processIDLine[currentLength++] = character;
+    int temp, total = 0;
+    while (fscanf(inputFile, "%d", &temp) == 1) {
+    	total++;
     }
 
-    processIDLine[currentLength] = '\0';
-
-	fclose(inputFile);
-
-	// Handle empty file scenario
-    if (currentLength == 0) {
-        fprintf(stderr, "Error: File is empty\n");
-        free(processIDLine);
+    int *numbers = (int *)malloc(total * sizeof(int));
+    if (numbers == NULL) {
+        printf("Memory allocation failed.\n");
+        fclose(inputFile);
         return NULL;
     }
 
-    // Trim trailing whitespace
-    while (currentLength > 0 && (processIDLine[currentLength - 1] == ' ' ||
-                                 processIDLine[currentLength - 1] == '\t' ||
-                                 processIDLine[currentLength - 1] == '\n' ||
-                                 processIDLine[currentLength - 1] == '\r')) {
-        processIDLine[--currentLength] = '\0';
+    rewind(inputFile);
+    *count = 0;
+    while (fscanf(inputFile, "%d", &numbers[*count]) == 1) {
+    	(*count)++;
     }
 
-	return processIDLine;
+	fclose(inputFile);
+
+	// int count = 0;
+    // char *tempToken = strtok(processIDLine, " ");
+    // while (tempToken) {
+    //     count++;
+    //     tempToken = strtok(NULL, " ");
+    // }
+
+    // int *array = (int *)malloc(count * sizeof(int));
+    // if (!array) {
+    // 	fprintf(stderr, "Memory allocation failed\n");
+    //     free(processIDLine);
+    //     return NULL;
+    // }
+
+
+	// // Reset the strtok process to split again
+    // strtok(processIDLine, " "); // Reset strtok to the start of the string
+    // char *token = strtok(processIDLine, " ");
+    // int i = 0;
+    // while (token) {
+    //     array[i] = atoi(token);
+    //     token = strtok(NULL, " ");
+    //     i++;
+    // }
+
+    // free(processIDLine);
+
+    // *size = count;
+
+	return numbers;
 }
 
 int main(int argc, const char *argv[]) {
 	
-	if (argc < 3) {
+	if (argc != 3) {
 		fprintf(stderr, "Usage: %s <in.txt> <out.txt>\n", argv[0]);
-		return 1;
+		return EXIT_FAILURE;
 	}
 
-	char *processIDLine = readFile(argv[1]);
-    if (!processIDLine) {
-        return 1; 
+	// Initialise VM
+	initialiseVM();
+
+	// Initialise RAM
+	for (int i = 0; i < RAM_CAPACITY; i++) {
+		ram[i] = NULL;
+	}
+
+	// Initialise page table to default, 99
+	for (int i = 0; i < NUM_PROCESSES; i++) {
+		for (int j = 0; j < PAGE_PROCESS; j++) {
+			pageTable[i][j] = 99;
+		}
+	}
+
+	int count;
+	int *numbers = readFile(argv[1], &count);
+
+	if (numbers != NULL) {
+        // Print the numbers
+        printf("Numbers in the file:\n");
+        for (int i = 0; i < count; i++) {
+            printf("%d ", numbers[i]);
+        }
+        printf("\n");
+
+        // Free the allocated memory
+        free(numbers);
     }
 
-	writeOutput(argv[2], processIDLine);
+    //printf("%s", argv[1]);
+
+	//writeOutput(argv[2], processIDLine);
 
 	return 0;
 }
