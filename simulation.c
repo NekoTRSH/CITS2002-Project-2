@@ -2,6 +2,7 @@
 #include	<stdlib.h>
 #include	<ctype.h>
 #include	<string.h>
+#include	<limits.h>
 
 #define	RAM_CAPACITY	16
 #define VM_CAPACITY		32
@@ -36,6 +37,7 @@ void initialiseVM() {
 	}
 }
 
+// Write output... under construction
 void writeOutput(const char *filename, const char *processes) {
 
 	FILE *outputFile = fopen(filename, "w");
@@ -51,6 +53,7 @@ void writeOutput(const char *filename, const char *processes) {
 	fclose(outputFile);
 }
 
+// Reads file properly
 int *readFile(const char *filename, int *count) {
 
 	FILE *inputFile = fopen(filename, "r");
@@ -87,6 +90,116 @@ int *readFile(const char *filename, int *count) {
 	return numbers;
 }
 
+// Prints page table to output file
+void printPageTable(FILE *out) {
+    for (int i = 0; i < NUM_PROCESSES; i++) {
+        for (int j = 0; j < PAGE_PROCESS; j++) {
+            fprintf(out, "%d", pageTable[i][j]);
+            if (j < PAGE_PROCESS - 1) {
+                fprintf(out, ", ");
+            }
+        }
+        fprintf(out, "\n");
+    }
+}
+
+// Prints RAM contents to output file
+void printRAM(FILE *out) {
+    for (int i = 0; i < RAM_CAPACITY; i++) {
+        if (ram[i] != NULL) {
+            fprintf(out, "%d,%d,%d", ram[i]->processID, ram[i]->pageNum, ram[i]->lastAccessed);
+        } else {
+            fprintf(out, "empty");
+        }
+        if (i < RAM_CAPACITY - 1) {
+            fprintf(out, "; ");
+        }
+    }
+    fprintf(out, "\n");
+}
+
+// Paging simulation function
+void loadPage(int processID, int timeStep) {
+
+	// Simplified the page to load
+	int pageToLoad = timeStep % PAGE_PROCESS;
+
+	// Selects the frame we are working with
+	int frame = pageTable[processID][pageToLoad];
+
+	// If the frame is already in the RAM
+	if (frame != 99) {
+		ram[frame]->lastAccessed = timeStep;		// The last accessed time is updated to the timeStep
+		printf("Page %d process %d in RAM: frame %d, updating time.\n", pageToLoad, processID, frame);
+		return;
+	}
+
+	printf("Page %d process %d needs to go RAM.\n", pageToLoad, processID);
+
+	// Finds available frame in RAM, two consecutive slots
+	int emptyFrame = -1;
+    for (int i = 0; i < RAM_CAPACITY; i += 2) {  	// Pages occupy two locations
+        if (ram[i] == NULL && ram[i + 1] == NULL) {	// If both are NULL(empty)
+            emptyFrame = i / 2;  // Frame number
+            break;
+        }
+    }
+
+    // If no frames free, evict a page
+    if (emptyFrame == -1) {
+
+    	printf("No free frames, LRU for process %d.\n", processID);
+
+    	// Find least recently used page of current process, local LRU
+    	int LRUFrame = -1;							// Initialised to invalid -1
+    	int LRUTime = INT_MAX;						// Use big arbitrary integer
+
+    	for (int i = 0; i < RAM_CAPACITY; i += 2) {
+    		// Check if ram is not NULL, processID is same, last accessed is smaller than LRUTime(initially always true)
+    		if (ram[i] && ram[i]->processID == processID && ram[i]->lastAccessed < LRUTime) {
+    			LRUTime = ram[i]->lastAccessed;		// LRUTime will be updated to last accessed
+    			LRUFrame = i / 2;					// Iterates in steps of 2
+    		}
+    	}
+
+    	// If no pages from the process in RAM, use global LRU
+    	if (LRUFrame == -1) {
+            printf("No pages from process %d in RAM, LRU.\n", processID);
+            for (int i = 0; i < RAM_CAPACITY; i += 2) {
+            	// Similar to before but don't check the processID
+                if (ram[i] && ram[i]->lastAccessed < LRUTime) {
+                    LRUTime = ram[i]->lastAccessed;
+                    LRUFrame = i / 2;
+                }
+            }
+        }
+
+        printf("Evicting page %d process %d frame %d (last time %d).\n",
+               ram[LRUFrame * 2]->pageNum, ram[LRUFrame * 2]->processID, LRUFrame, LRUTime);
+
+        // Evicting the page to VM, update page table
+        pageTable[ram[LRUFrame * 2]->processID][ram[LRUFrame * 2]->pageNum] = 99;
+
+        // Empty frame loads the new page
+        emptyFrame = LRUFrame;
+
+    }
+
+    // Load page into RAM
+    // emptyFrame represents index of frame in RAM
+    // RHS calculates index in VM where process is loaded from
+    // processID * PAGE_PROCESS is base index, pageToLoad specifies which page of process
+    ram[emptyFrame * 2] = virtualMemory[processID * PAGE_PROCESS + pageToLoad];
+    ram[emptyFrame * 2 + 1] = virtualMemory[processID * PAGE_PROCESS + pageToLoad + 1];
+
+    // Update lastAccessed of the frame in the RAM, important for LRU
+    ram[emptyFrame * 2]->lastAccessed = timeStep;
+    ram[emptyFrame * 2 + 1]->lastAccessed = timeStep;
+
+    // Update page table after loading page into RAM
+    pageTable[processID][pageToLoad] = emptyFrame;
+}
+
 int main(int argc, const char *argv[]) {
 	
 	if (argc != 3) {
@@ -113,10 +226,37 @@ int main(int argc, const char *argv[]) {
 	int count;		// For the number of processID's
 	int *processIDArray = readFile(argv[1], &count);
 
+	// Testing
+	printf("%d\n", count);
+	for (int i = 0; i < count; i++) {
+		printf("%d ", processIDArray[i]);
+	}
+	printf("\n");
 
+	//
+	for (int i = 0; i < count; i++) {
+		int processID = processIDArray[i];
+		loadPage(processID, i);
+	}
 
     // Free the allocated memory
-    free(processIDArray)
+    free(processIDArray);
+
+
+    FILE *out = fopen(argv[2], "w");
+    if (!out) {
+        perror("Error opening output file");
+        return EXIT_FAILURE;
+    }
+
+    printPageTable(out);
+    printRAM(out);
+
+    fclose(out);
+
+    for (int i = 0; i < VM_CAPACITY; i++) {
+        free(virtualMemory[i]);
+    }
 
 	return 0;
 }
