@@ -1,3 +1,8 @@
+//  CITS2002 Project 2 2024
+//  Student1:   23950298   MOHAMED SHAFI SHAIK ABDUL KADER RESHMA
+//  Student2:   23649385   NEICKO LLANITA FRANCISCO
+//  Platform:   Linux 
+
 #include 	<stdio.h>
 #include	<stdlib.h>
 #include	<ctype.h>
@@ -49,7 +54,7 @@ int *readFile(const char *filename, int *count) {
 		return NULL;
 	}
 
-	// Count how many numbers there are
+	// Count how many numbers there are in the input file
     int temp, total = 0;
     // Reads integer %d
     while (fscanf(inputFile, "%d", &temp) == 1) {
@@ -101,7 +106,8 @@ void printRAM(FILE *out) {
 
     for (int i = 0; i < RAM_CAPACITY; i++) {
         if (ram[i] != NULL) {
-            fprintf(out, "%d,%d,%d", ram[i]->pageNum, ram[i]->processID, ram[i]->lastAccessed);
+        	// ProcessId first then pageNum then lastAccessed
+            fprintf(out, "%d,%d,%d", ram[i]->processID, ram[i]->pageNum, ram[i]->lastAccessed);
         } else {
             fprintf(out, "empty");
         }
@@ -231,7 +237,7 @@ int main(int argc, const char *argv[]) {
 	int count;		// For the number of processID's
 	int *processIDArray = readFile(argv[1], &count);
 
-	// This is the process, the for loop represents time step
+	// This is the process, the for loop represents time step, starts at 0
 	for (int i = 0; i < count; i++) {
 		int processID = processIDArray[i];
 		loadPage(processID, i);
